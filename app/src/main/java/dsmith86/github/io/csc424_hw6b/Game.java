@@ -1,19 +1,18 @@
 package dsmith86.github.io.csc424_hw6b;
 
 import android.content.Context;
-import android.util.Pair;
 
-import java.util.ArrayList;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
-/**
- * Created by Daniel on 3/17/2015.
- */
 public class Game implements GameSurfaceView.GameStateInterface {
 
     private static final int ROW_COUNT = 3;
     private static final int COL_COUNT = 3;
 
-    private GridItem<Pair<Integer, Integer>>[][] grid;
+    private GridItem<Character>[][] grid;
 
     private GameSurfaceView gameSurfaceView;
     private Context context;
@@ -32,23 +31,43 @@ public class Game implements GameSurfaceView.GameStateInterface {
         gameSurfaceView.onResume();
         gameSurfaceView.setGameStateInterface(this);
 
-        init();
+        loadGrid(R.raw.grid_large);
     }
 
-    private void init() {
-        grid = new GridItem[ROW_COUNT][COL_COUNT];
+    public void loadGrid(int gridResource) {
+        try {
+            InputStream inputStream = context.getResources().openRawResource(gridResource);
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 
-        for (int i = 0; i < ROW_COUNT; i++) {
-            for (int j = 0; j < COL_COUNT; j++) {
-                grid[i][j] = new GridItem<>(new Pair<>(i, j));
+            int n = Integer.parseInt(bufferedReader.readLine());
 
-                if (i > 0) {
-                    grid[i][j].setUp(grid[i - 1][j]);
-                }
-                if (j > 0) {
-                    grid[i][j].setLeft(grid[i][j - 1]);
+            grid = new GridItem[n][n];
+
+            for (int i = 0; i < n; i++) {
+                String line = bufferedReader.readLine();
+                int columnCount = Math.min(line.length(), n);
+
+                for (int j = 0; j < columnCount; j++) {
+                    grid[i][j] = new GridItem<>(line.charAt(j));
+
+                    if (i > 0) {
+                        grid[i][j].setUp(grid[i - 1][j]);
+                    }
+                    if (j > 0) {
+                        grid[i][j].setLeft(grid[i][j - 1]);
+                    }
                 }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
+
+    @Override
+    public GridItem<Character>[][] getGrid() {
+        if (grid != null) {
+            return grid;
+        }
+        return new GridItem[0][];
     }
 }

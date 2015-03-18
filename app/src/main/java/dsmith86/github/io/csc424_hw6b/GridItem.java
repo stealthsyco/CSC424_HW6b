@@ -33,5 +33,8 @@ public class GridItem<T> {
         }
     }
 
+    public T getData() {
+        return data;
+    }
 
 }
