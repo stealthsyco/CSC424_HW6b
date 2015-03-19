@@ -28,6 +28,9 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
     private Point firstTouch = null;
     private Point mostRecentTouch = null;
+    private int gridItemSize;
+    private int xStart;
+    private int yStart;
 
     public GameSurfaceView(Context context) {
         super(context);
@@ -88,16 +91,20 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         int x = (int)event.getX();
         int y = (int)event.getY();
 
-        Log.d("event", Integer.toString(event.getActionIndex()));
-
         if (gameStateInterface.getGridBounds().contains(x, y)) {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 firstTouch = new Point(x, y);
                 mostRecentTouch = firstTouch;
 
+                firstTouch = snapToGrid(firstTouch);
             }
             if (event.getAction() == MotionEvent.ACTION_MOVE) {
                 mostRecentTouch = new Point(x, y);
+                mostRecentTouch = snapToGrid(mostRecentTouch);
+            }
+
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+
             }
             return true;
         }
@@ -123,15 +130,15 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         Rect gridBounds = new Rect();
 
         int rowCount = grid.length;
-        int gridItemSize = (getWidth() - 100) / rowCount;
+        gridItemSize = (getWidth() - 100) / rowCount;
         textPaint.setTextSize(200/rowCount);
-        int yStart = getHeight()/2 - (int)(rowCount/2.f * gridItemSize);
+        yStart = getHeight()/2 - (int)(rowCount/2.f * gridItemSize);
 
         gridBounds.top = yStart + GRID_PADDING;
         gridBounds.bottom = yStart + rowCount * gridItemSize - GRID_PADDING;
 
         int colCount = grid[0].length;
-        int xStart = getWidth()/2 - (int)(colCount/2.f * gridItemSize);
+        xStart = getWidth()/2 - (int)(colCount/2.f * gridItemSize);
 
         gridBounds.left = xStart + GRID_PADDING;
         gridBounds.right = xStart + colCount * gridItemSize - GRID_PADDING;
@@ -166,6 +173,15 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
             canvas.drawLine(firstTouch.x, firstTouch.y, mostRecentTouch.x, mostRecentTouch.y, paint);
         }
+    }
+
+    Point snapToGrid(Point point) {
+        point.x = (int)Math.floor((point.x - xStart) / gridItemSize)
+                * gridItemSize + xStart + gridItemSize/2;
+        point.y = (int)Math.floor((point.y - yStart) / gridItemSize)
+                * gridItemSize + yStart + gridItemSize/2;
+
+        return point;
     }
 
     public interface GameStateInterface {
