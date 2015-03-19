@@ -73,12 +73,10 @@ public class Game implements GameSurfaceView.GameStateInterface {
         return new GridItem[0][];
     }
 
-    @Override
     public void setGridBounds(Rect gridBounds) {
         this.gridBounds = gridBounds;
     }
 
-    @Override
     public Rect getGridBounds() {
         if (gridBounds != null) {
             return gridBounds;

@@ -7,14 +7,19 @@ import android.graphics.Rect;
  */
 public class Tile {
 
-    String letter;
-
+    private String letter;
     private Rect boundingRect;
+    private int x, y;
+    private boolean isTouched;
 
-    public Tile(String inLetter, Rect theBoundingRect){
+
+    public Tile(String inLetter, Rect theBoundingRect, int xLoc, int yLoc){
 
         letter = inLetter;
         boundingRect = theBoundingRect;
+        x = xLoc;
+        y = yLoc;
+        isTouched = false;
 
 
     }
@@ -25,6 +30,15 @@ public class Tile {
 
     public String getLetter(){
         return letter;
+    }
+
+    public int getX(){ return x; }
+    public int getY(){ return y; }
+    public boolean getTouched() { return isTouched; }
+
+    public boolean setTouched(boolean bool){
+       isTouched = bool;
+       return isTouched;
     }
 
 

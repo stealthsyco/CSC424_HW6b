@@ -23,8 +23,15 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
     private Boolean shouldDrawSurfaceView;
     private GameStateInterface gameStateInterface;
     private Tile[][] tiles;
+    private String word;
+    private int counter, correctWords;
+    private ArrayList<String> correct;
+    private StringBuilder sb;
 
-    String first, last;
+    private ArrayList<String> words;
+    private String first, last;
+    private Tile firstTile, lastTile;
+
 
     public GameSurfaceView(Context context) {
         super(context);
@@ -42,6 +49,20 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
     private void init() {
         shouldDrawSurfaceView = false;
+        word = "NULL";
+
+        correct = new ArrayList<String>();
+        words = new ArrayList<String>();
+        words.add("STINGRAY");
+        words.add("STING");
+        words.add("SQUIRREL");
+        words.add("STAR");
+        words.add("SNAKE");
+        words.add("RIGOR");
+        words.add("SULK");
+        words.add("RAP");
+        words.add("NEED");
+        words.add("CURL");
 
         surfaceHolder = getHolder();
 
@@ -61,6 +82,7 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
             }
         }
     }
+
 
     public void onPause() {
         shouldDrawSurfaceView = false;
@@ -94,8 +116,14 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setColor(Color.BLACK);
 
+        Paint counterPaint = new Paint();
+        counterPaint.setTextSize(50);
+        counterPaint.setColor(Color.BLACK);
+
         GridItem<Character>[][] grid = gameStateInterface.getGrid();
         tiles = new Tile[8][8];
+
+        canvas.drawText("Number of Correct Words: " + correctWords, 100, 50, counterPaint);
 
         int rowCount = grid.length;
         int gridItemSize = (getWidth() - 100) / rowCount;
@@ -113,7 +141,7 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                         j * gridItemSize + gridItemSize + xStart - 2,
                         i * gridItemSize + gridItemSize + yStart - 2);
 
-                        tiles[i][j] = new Tile(Character.toString(grid[i][j].getData()), rect);
+                        tiles[i][j] = new Tile(Character.toString(grid[i][j].getData()), rect, j, i);
 
 
                 canvas.drawRect(rect, rectPaint);
@@ -129,22 +157,23 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
     @Override
     public boolean onTouchEvent(MotionEvent e){
 
-
-
         int x = (int) e.getX();
         int y = (int) e.getY();
-
-
-
+        sb = new StringBuilder();
 
         if (e.getAction() == MotionEvent.ACTION_DOWN) {
             for (Tile[] top : tiles){
                 for(Tile t : top) {
                     try {
                         if (t.containsTouch(x, y)) {
+                            firstTile = t;
                             first = t.getLetter();
-
+                            if (t.getTouched() == false) {
+                                t.setTouched(true);
+                                counter++;
+                            }
                             if (last == null)
+                                lastTile = t;
                                 last = first;
                         }
                     } catch (Exception ex) {
@@ -160,6 +189,10 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                     try {
                         if (t.containsTouch(x, y)) {
                             last = t.getLetter();
+                            if (t.getTouched() == false) {
+                                t.setTouched(true);
+                                counter++;
+                            }
                         }
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -173,7 +206,20 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                 for(Tile t : top) {
                     try {
                         if (t.containsTouch(x, y)) {
+                            lastTile = t;
                             last = t.getLetter();
+                            if (t.getTouched() == false) {
+                                t.setTouched(true);
+                                counter++;
+                            }
+                            Log.d("FT-X", Integer.toString(firstTile.getX()));
+                            Log.d("FT-Y", Integer.toString(firstTile.getY()));
+                            Log.d("LT-X", Integer.toString(lastTile.getX()));
+                            Log.d("LT-Y", Integer.toString(lastTile.getY()));
+                            Log.d("Counter", Integer.toString(counter));
+
+
+
 
                         }
                     } catch (Exception ex) {
@@ -181,16 +227,70 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                     }
                 }
             }
+
+            if (lastTile.getY() == firstTile.getY()){
+
+                for (int i = firstTile.getX(); i < counter + firstTile.getX(); i ++) {
+                    Log.d("Letters Collected", tiles[firstTile.getY()][i].getLetter());
+                    sb.append(tiles[firstTile.getY()][i].getLetter());
+                    }
+
+                for (Tile[] top : tiles){
+                    for (Tile t : top){
+                        t.setTouched(false);
+                    }
+                }
+                counter = 0;
+                word = sb.toString();
+                Log.d("The Word Selected", word);
+                compareWords(word);
+                }
+
+            if (lastTile.getX() == firstTile.getX()){
+                for (int i = firstTile.getY(); i < counter + firstTile.getY(); i++) {
+                    Log.d("Letters Collected", tiles[i][firstTile.getX()].getLetter());
+                    sb.append(tiles[i][firstTile.getX()].getLetter());
+                }
+
+                for (Tile[] top : tiles){
+                    for (Tile t : top){
+                        t.setTouched(false);
+                    }
+                }
+                counter = 0;
+                word = sb.toString();
+                Log.d("The Word Selected", word);
+                compareWords(word);
+            }
+
+            else if(firstTile.getX() + counter > lastTile.getX()){
+                Log.d("Haha", "We got here");
+
+                for (int i = firstTile.getX(); i <= lastTile.getX(); i++) {
+                    Log.d("Letters Collected", tiles[i][i].getLetter());
+                    sb.append(tiles[i][i].getLetter());
+
+                }
+
+                for (Tile[] top : tiles){
+                    for (Tile t : top){
+                        t.setTouched(false);
+                    }
+                }
+                counter = 0;
+                word = sb.toString();
+                Log.d("The Word Selected", word);
+                compareWords(word);
+
+            }
         }
 
 
 
-       // if(e.getAction() == MotionEvent.ACTION_UP){
-      //      last = Character.toString(grid[x][y].getData());
-      //  }
-
-        Log.d("Things", first);
-        Log.d("More Things", last);
+        Log.d("Things", Integer.toString(correctWords));
+        for (String w : correct){
+            Log.d("Words", w);
+        }
         return true;
 
 
@@ -198,6 +298,25 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
     public interface GameStateInterface {
         GridItem<Character>[][] getGrid();
+    }
+
+    public void compareWords(String inWord){
+        for (String w : words){
+            if(w.equals(inWord) && !correct.contains(inWord)){
+                correctWords +=1;
+                correct.add(inWord);
+                //words.remove(inWord);
+                if (surfaceHolder.getSurface().isValid() && gameStateInterface != null) {
+                    Canvas canvas = surfaceHolder.lockCanvas();
+
+                    drawBackground(canvas);
+                    drawGrid(canvas);
+
+                    surfaceHolder.unlockCanvasAndPost(canvas);
+                    shouldDrawSurfaceView = false;
+                }
+            }
+        }
     }
 
 
