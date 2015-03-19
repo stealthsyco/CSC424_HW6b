@@ -1,6 +1,7 @@
 package dsmith86.github.io.csc424_hw6b;
 
 import android.content.Context;
+import android.graphics.Rect;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,6 +17,7 @@ public class Game implements GameSurfaceView.GameStateInterface {
 
     private GameSurfaceView gameSurfaceView;
     private Context context;
+    private Rect gridBounds = null;
 
     public Game(Context context, GameSurfaceView gameSurfaceView) {
         this.gameSurfaceView = gameSurfaceView;
@@ -69,5 +71,18 @@ public class Game implements GameSurfaceView.GameStateInterface {
             return grid;
         }
         return new GridItem[0][];
+    }
+
+    @Override
+    public void setGridBounds(Rect gridBounds) {
+        this.gridBounds = gridBounds;
+    }
+
+    @Override
+    public Rect getGridBounds() {
+        if (gridBounds != null) {
+            return gridBounds;
+        }
+        return new Rect(0,0,0,0);
     }
 }
