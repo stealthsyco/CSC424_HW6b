@@ -4,37 +4,27 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Point;
 import android.graphics.Rect;
-import android.os.Handler;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 /**
  * Created by Daniel on 3/17/2015.
  */
 public class GameSurfaceView extends SurfaceView implements Runnable{
-
-    private final int GRID_PADDING = 2;
-
     private Thread thread;
     private SurfaceHolder surfaceHolder;
     private Boolean shouldDrawSurfaceView;
     private GameStateInterface gameStateInterface;
-    private Handler deleteHandler;
-    private boolean shouldDeleteLine = false;
+    private Tile[][] tiles;
 
-    private Point firstTouch = null;
-    private Point mostRecentTouch = null;
-    private int gridItemSize;
-    private int xStart;
-    private int yStart;
-    private boolean selectionIsValid = false;
+    String first, last;
 
     public GameSurfaceView(Context context) {
         super(context);
@@ -43,9 +33,6 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
     public GameSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
-
-        deleteHandler = new Handler();
-
         init();
     }
 
@@ -57,6 +44,7 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         shouldDrawSurfaceView = false;
 
         surfaceHolder = getHolder();
+
     }
 
     @Override
@@ -67,9 +55,9 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
                 drawBackground(canvas);
                 drawGrid(canvas);
-                drawSelection(canvas);
 
                 surfaceHolder.unlockCanvasAndPost(canvas);
+                shouldDrawSurfaceView = false;
             }
         }
     }
@@ -93,60 +81,8 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         thread.start();
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        int x = (int)event.getX();
-        int y = (int)event.getY();
-
-
-        if (gameStateInterface.getGridBounds().contains(x, y)) {
-            shouldDeleteLine = false;
-
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                firstTouch = new Point(x, y);
-                mostRecentTouch = firstTouch;
-
-                firstTouch = snapToGrid(firstTouch);
-            }
-            if (event.getAction() == MotionEvent.ACTION_MOVE) {
-                mostRecentTouch = new Point(x, y);
-                mostRecentTouch = snapToGrid(mostRecentTouch);
-            }
-
-            selectionIsValid = gridSelectionIsValid(firstTouch, mostRecentTouch);
-
-            if (event.getAction() == MotionEvent.ACTION_UP) {
-                if (selectionIsValid) {
-
-                } else {
-                    shouldDeleteLine = true;
-                    Runnable runnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            if (shouldDeleteLine) {
-                                final Lock mutex = new ReentrantLock(true);
-                                mutex.lock();
-
-                                firstTouch = null;
-                                mostRecentTouch = null;
-
-                                mutex.unlock();
-                            }
-                        }
-                    };
-
-                    deleteHandler.postDelayed(runnable, 300);
-
-                }
-            }
-            return true;
-        }
-
-        return false;
-    }
-
     private void drawBackground(Canvas canvas) {
-        canvas.drawColor(Color.argb(255, 44, 62, 80));
+        canvas.drawColor(Color.argb(255, 80, 124, 0));
     }
 
     private void drawGrid(Canvas canvas) {
@@ -159,30 +95,26 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         textPaint.setColor(Color.BLACK);
 
         GridItem<Character>[][] grid = gameStateInterface.getGrid();
-
-        Rect gridBounds = new Rect();
+        tiles = new Tile[8][8];
 
         int rowCount = grid.length;
-        gridItemSize = (getWidth() - 100) / rowCount;
-        textPaint.setTextSize(300/rowCount);
-        yStart = getHeight()/2 - (int)(rowCount/2.f * gridItemSize);
-
-        gridBounds.top = yStart + GRID_PADDING;
-        gridBounds.bottom = yStart + rowCount * gridItemSize - GRID_PADDING;
-
-        int colCount = grid[0].length;
-        xStart = getWidth()/2 - (int)(colCount/2.f * gridItemSize);
-
-        gridBounds.left = xStart + GRID_PADDING;
-        gridBounds.right = xStart + colCount * gridItemSize - GRID_PADDING;
+        int gridItemSize = (getWidth() - 100) / rowCount;
+        textPaint.setTextSize(200/rowCount);
+        int yStart = getHeight()/2 - (int)(rowCount/2.f * gridItemSize);
 
         for (int i = 0; i < rowCount; i++) {
+            int colCount = grid[i].length;
+            int xStart = getWidth()/2 - (int)(colCount/2.f * gridItemSize);
+
             for (int j = 0; j < colCount; j++) {
                 Rect rect = new Rect(
-                        j * gridItemSize + xStart + GRID_PADDING,
-                        i * gridItemSize + yStart + GRID_PADDING,
-                        j * gridItemSize + gridItemSize + xStart - GRID_PADDING,
-                        i * gridItemSize + gridItemSize + yStart - GRID_PADDING);
+                        j * gridItemSize + xStart + 2,
+                        i * gridItemSize + yStart + 2,
+                        j * gridItemSize + gridItemSize + xStart - 2,
+                        i * gridItemSize + gridItemSize + yStart - 2);
+
+                        tiles[i][j] = new Tile(Character.toString(grid[i][j].getData()), rect);
+
 
                 canvas.drawRect(rect, rectPaint);
 
@@ -192,53 +124,81 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                         textPaint);
             }
         }
-
-        gameStateInterface.setGridBounds(gridBounds);
     }
 
-    private void drawSelection(Canvas canvas) {
-        if (firstTouch != null && mostRecentTouch != null) {
-            Paint paint = new Paint();
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(10);
+    @Override
+    public boolean onTouchEvent(MotionEvent e){
 
-            if (selectionIsValid) {
-                paint.setColor(Color.argb(255, 44, 62, 80));
-            } else {
-                paint.setColor(Color.RED);
+
+
+        int x = (int) e.getX();
+        int y = (int) e.getY();
+
+
+
+
+        if (e.getAction() == MotionEvent.ACTION_DOWN) {
+            for (Tile[] top : tiles){
+                for(Tile t : top) {
+                    try {
+                        if (t.containsTouch(x, y)) {
+                            first = t.getLetter();
+
+                            if (last == null)
+                                last = first;
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
             }
-
-            paint.setStrokeCap(Paint.Cap.ROUND);
-
-            canvas.drawLine(firstTouch.x, firstTouch.y, mostRecentTouch.x, mostRecentTouch.y, paint);
-        }
-    }
-
-    Point snapToGrid(Point point) {
-        point.x = (int)Math.floor((point.x - xStart) / gridItemSize)
-                * gridItemSize + xStart + gridItemSize/2;
-        point.y = (int)Math.floor((point.y - yStart) / gridItemSize)
-                * gridItemSize + yStart + gridItemSize/2;
-
-        return point;
-    }
-
-    boolean gridSelectionIsValid(Point first, Point second) {
-        if (first == null || second == null) {
-            return false;
         }
 
-        int deltaX = second.x - first.x;
-        int deltaY = second.y - first.y;
+        if (e.getAction() == MotionEvent.ACTION_MOVE) {
+            for (Tile[] top : tiles){
+                for(Tile t : top) {
+                    try {
+                        if (t.containsTouch(x, y)) {
+                            last = t.getLetter();
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        }
 
-        long angle = Math.round((float) Math.toDegrees(Math.atan2(-deltaX, deltaY)));
+        if (e.getAction() == MotionEvent.ACTION_UP) {
+            for (Tile[] top : tiles){
+                for(Tile t : top) {
+                    try {
+                        if (t.containsTouch(x, y)) {
+                            last = t.getLetter();
 
-        return angle % 45 == 0;
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        }
+
+
+
+       // if(e.getAction() == MotionEvent.ACTION_UP){
+      //      last = Character.toString(grid[x][y].getData());
+      //  }
+
+        Log.d("Things", first);
+        Log.d("More Things", last);
+        return true;
+
+
     }
 
     public interface GameStateInterface {
         GridItem<Character>[][] getGrid();
-        void setGridBounds(Rect gridBounds);
-        Rect getGridBounds();
     }
+
+
 }
