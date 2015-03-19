@@ -6,13 +6,14 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Handler;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by Daniel on 3/17/2015.
@@ -25,12 +26,15 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
     private SurfaceHolder surfaceHolder;
     private Boolean shouldDrawSurfaceView;
     private GameStateInterface gameStateInterface;
+    private Handler deleteHandler;
+    private boolean shouldDeleteLine = false;
 
     private Point firstTouch = null;
     private Point mostRecentTouch = null;
     private int gridItemSize;
     private int xStart;
     private int yStart;
+    private boolean selectionIsValid = false;
 
     public GameSurfaceView(Context context) {
         super(context);
@@ -39,6 +43,9 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
     public GameSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
+
+        deleteHandler = new Handler();
+
         init();
     }
 
@@ -91,7 +98,10 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
         int x = (int)event.getX();
         int y = (int)event.getY();
 
+
         if (gameStateInterface.getGridBounds().contains(x, y)) {
+            shouldDeleteLine = false;
+
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 firstTouch = new Point(x, y);
                 mostRecentTouch = firstTouch;
@@ -103,8 +113,31 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                 mostRecentTouch = snapToGrid(mostRecentTouch);
             }
 
-            if (event.getAction() == MotionEvent.ACTION_UP) {
+            selectionIsValid = gridSelectionIsValid(firstTouch, mostRecentTouch);
 
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                if (selectionIsValid) {
+
+                } else {
+                    shouldDeleteLine = true;
+                    Runnable runnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            if (shouldDeleteLine) {
+                                final Lock mutex = new ReentrantLock(true);
+                                mutex.lock();
+
+                                firstTouch = null;
+                                mostRecentTouch = null;
+
+                                mutex.unlock();
+                            }
+                        }
+                    };
+
+                    deleteHandler.postDelayed(runnable, 300);
+
+                }
             }
             return true;
         }
@@ -131,7 +164,7 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
 
         int rowCount = grid.length;
         gridItemSize = (getWidth() - 100) / rowCount;
-        textPaint.setTextSize(200/rowCount);
+        textPaint.setTextSize(300/rowCount);
         yStart = getHeight()/2 - (int)(rowCount/2.f * gridItemSize);
 
         gridBounds.top = yStart + GRID_PADDING;
@@ -168,7 +201,13 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
             Paint paint = new Paint();
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(10);
-            paint.setColor(Color.argb(255, 44, 62, 80));
+
+            if (selectionIsValid) {
+                paint.setColor(Color.argb(255, 44, 62, 80));
+            } else {
+                paint.setColor(Color.RED);
+            }
+
             paint.setStrokeCap(Paint.Cap.ROUND);
 
             canvas.drawLine(firstTouch.x, firstTouch.y, mostRecentTouch.x, mostRecentTouch.y, paint);
@@ -182,6 +221,19 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
                 * gridItemSize + yStart + gridItemSize/2;
 
         return point;
+    }
+
+    boolean gridSelectionIsValid(Point first, Point second) {
+        if (first == null || second == null) {
+            return false;
+        }
+
+        int deltaX = second.x - first.x;
+        int deltaY = second.y - first.y;
+
+        long angle = Math.round((float) Math.toDegrees(Math.atan2(-deltaX, deltaY)));
+
+        return angle % 45 == 0;
     }
 
     public interface GameStateInterface {
