@@ -99,9 +99,10 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
             if (event.getAction() == MotionEvent.ACTION_MOVE) {
                 mostRecentTouch = new Point(x, y);
             }
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     private void drawBackground(Canvas canvas) {
@@ -160,7 +161,7 @@ public class GameSurfaceView extends SurfaceView implements Runnable{
             Paint paint = new Paint();
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(10);
-            paint.setColor(Color.BLUE);
+            paint.setColor(Color.argb(255, 44, 62, 80));
             paint.setStrokeCap(Paint.Cap.ROUND);
 
             canvas.drawLine(firstTouch.x, firstTouch.y, mostRecentTouch.x, mostRecentTouch.y, paint);
